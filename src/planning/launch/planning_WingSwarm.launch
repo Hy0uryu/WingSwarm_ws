@@ -1,0 +1,76 @@
+<launch>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find planning)/config/rviz_wingSwarm_SmallScale.rviz">
+  </node>
+
+  <group ns="drone0">
+
+    <node pkg="odom_visualization" name="odom_visualization" type="odom_visualization" output="screen">
+      <remap from="~odom" to="odom" />
+      <param name="robot_scale" value="1.0"/>
+    </node>
+
+    <node pkg="odom_visualization" name="odom_visualization_plate" type="odom_visualization_plate" output="screen">
+      <remap from="~odom" to="planning/target_odom" />
+      <param name="height" value="1.2"/>
+      <param name="width" value="1.6"/>
+      <param name="platform_r" value="1.0"/>
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="manager" args="manager" output="screen">
+      <param name="num_worker_threads" value="16"/>
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="planning" args="load planning/Nodelet manager" output="screen">
+      <remap from="~odom" to="odom"/>
+      <remap from="~heartbeat" to="heartbeat"/>
+      <remap from="~trajectory" to="trajectory"/>
+      <remap from="~replanState" to="replanState"/>
+      <remap from="~triger" to="/triger"/>
+      <remap from="~target" to="/target/odom"/>
+
+      <param name="plan_duration" value="2.0"/>
+
+      <param name="K" value="8"/>
+      <param name="Piece_num" value="5"/>
+      <param name="rho" value="3.8"/>
+
+      <param name="vmax" value="1.7"/>
+      <param name="amax" value="0.08"/>
+      <param name="vmin" value="1.3"/>
+      <param name="amin" value="-0.02"/>
+      <param name="dSwarmMin" value="2.0"/>
+      <param name="omegamax" value="0.35"/>
+
+      <param name="rhoT" value="10000.0"/>
+      <param name="rhoV" value="100.0"/>
+      <param name="rhoA" value="100.0"/>
+      <param name="rhoVtail" value="100.0"/>
+      <param name="rhoPswarm" value="10000.0"/>
+      <param name="rhoC" value="10000.0"/>
+
+      <!-- init States and taeget theta -->
+      <rosparam file="$(find planning)/config/Swarm_config_Small.yaml" command="load" />
+
+      <param name="ifLargeScale" value="false"/>
+      <param name="close_dist" value="4.0"/>
+
+      <param name="replan" value="false"/>
+      <param name="pause_debug" value="false"/>
+      <param name="monitorUse" value="false"/>
+      <param name="pausems" value="30"/>
+
+    </node>
+
+    <node pkg="planning" type="sim_node" name="sim_node" output="screen">
+        <remap from="~trajectory" to="planning/Swarm_trajs"/>
+        <remap from="~drone_states" to="planning/drone_states"/>
+        <remap from="~target_traj" to="planning/target_traj"/>
+        <remap from="~triger" to="/triger"/>
+
+        <param name="ifLargeScale" value="false"/>
+        <param name="Safe_R" value="1.0"/>
+    </node>
+
+  </group>
+</launch>
