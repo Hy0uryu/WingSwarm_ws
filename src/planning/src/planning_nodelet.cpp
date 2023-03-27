@@ -79,7 +79,6 @@ class Nodelet : public nodelet::Nodelet {
   double close_dist_;
 
   bool ifLargeScale_;
-  bool ifreplan_ = false;
 
   ros::Time Trigger_Time;
 
@@ -91,12 +90,13 @@ class Nodelet : public nodelet::Nodelet {
 
   double last_plan_deltaT, kDeltaT_;
 
+  bool replan_;
+
   void triger_callback(const geometry_msgs::PoseStampedConstPtr& msgPtr) {
     goal_ << msgPtr->pose.position.x, msgPtr->pose.position.y, 1.0;
     Trigger_Time = ros::Time::now();
     replan_ts = ros::Time::now().toSec();
     triger_received_ = true;
-    ifreplan_ = true;
   }
 
   void TargetTrajCallback(const quadrotor_msgs::PolyTrajConstPtr &msgPtr) {
@@ -249,12 +249,12 @@ class Nodelet : public nodelet::Nodelet {
   
   void debug_timer_callback(const ros::TimerEvent& event) {
     auto tic = std::chrono::steady_clock::now();
-    if (!triger_received_ || !receive_traj_ || !ifreplan_) {
+    if (!triger_received_ || !receive_traj_ ) {
       return;
     }
 
     if(isClose()){
-        ifreplan_ = false;
+        triger_received_ = false;
         return;
     } 
 
@@ -504,7 +504,8 @@ class Nodelet : public nodelet::Nodelet {
     last_plan_deltaT = (toc - tic).count() * 1e-9;
     std::cout<<"last_plan_deltaT: "<<last_plan_deltaT<<std::endl;
 
-    // triger_received_ = false;
+    if(!replan_)
+        triger_received_ = false;
   }
 
   void init(ros::NodeHandle& nh) {
@@ -517,6 +518,7 @@ class Nodelet : public nodelet::Nodelet {
 	nh.getParam("ifLargeScale", ifLargeScale_);
     nh.getParam("close_dist", close_dist_);
     nh.param("kDeltaT", kDeltaT_, 1.8);
+    nh.param("replan", replan_, false);
 
     // drone_num_ = 3;
     des_theta_.resize(3,drone_num_);

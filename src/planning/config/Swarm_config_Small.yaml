@@ -29,11 +29,11 @@ des_theta_0_y:              0.0
 des_theta_0_z:              0.0
 
 des_theta_1_x:              0.707
-des_theta_1_y:              -0.707
+des_theta_1_y:              0.707
 des_theta_1_z:              0.0
 
 des_theta_2_x:              0.707
-des_theta_2_y:              0.707
+des_theta_2_y:              -0.707
 des_theta_2_z:              0.0
 
 

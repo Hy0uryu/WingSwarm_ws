@@ -629,7 +629,7 @@ bool TrajOpt::grad_cost_a(const Eigen::Vector3d& a,
                           Eigen::Vector3d& gradv,
                           double& costa) {
   double apen;
-  apen = v.normalized().dot(a) - vmax_;
+  apen = v.normalized().dot(a) - amax_;
   double grad = 0;
   if(apen > 0){
     costa = rhoA_ * smoothedTriple(apen, grad);
@@ -637,7 +637,7 @@ bool TrajOpt::grad_cost_a(const Eigen::Vector3d& a,
     grada = rhoA_ * grad * v.normalized();
   }
   else{
-    apen = vmin_ - v.normalized().dot(a);
+    apen = amin_ - v.normalized().dot(a);
   if(apen > 0){
     costa = rhoA_ * smoothedTriple(apen, grad);
     gradv = - rhoA_ * grad * f_DN(v) * a;
@@ -652,15 +652,29 @@ bool TrajOpt::grad_curvature_check(const Eigen::Vector3d& a,
                                    Eigen::Vector3d& grada,
                                    Eigen::Vector3d& gradv,
                                    double& cost) {
-  double pen = (v.cross(a)).norm()/pow(v.norm(),3) - Curmax_;
-//   std::cout<<"Cpen: "<<pen<<std::endl;
+    
+  double pen;
+  if(Scalar100X_)
+    pen = (v.cross(a)).norm()/pow(v.norm(),3)*10 - Curmax_; //for 100X scalar
+  else
+    pen = (v.cross(a)).norm()/pow(v.norm(),3) - Curmax_;
+//   std::cout<<"Cpen: "<<(v.cross(a)).norm()/pow(v.norm(),3)<<" "<<Curmax_ <<std::endl;
   if (pen > 0) {
     double grad = 0;
     cost = rhoC_ * smoothedTriple(pen, grad);
     Eigen::Vector3d Partialv = - (1/((v.cross(a)).norm()*pow(v.norm(),3))) * skewMatrix(a).transpose() * (v.cross(a)) - 3*(v.cross(a)).norm()/pow(v.norm(),5) * v;
     Eigen::Vector3d Partiala = (1 / (pow(v.norm(),3) * (v.cross(a)).norm())) * skewMatrix(v).transpose() * (v.cross(a));
-    gradv = rhoC_ * grad * Partialv;
-    grada = rhoC_ * grad * Partiala;
+    if(Scalar100X_){
+        // for 100X scalar
+        gradv = rhoC_ * grad * 10 * Partialv;
+        grada = rhoC_ * grad * 10 * Partiala;
+    }
+    else{
+        // normal condition
+        gradv = rhoC_ * grad * Partialv;
+        grada = rhoC_ * grad * Partiala;
+    }
+
     return true;
   }
   return false;
@@ -748,6 +762,8 @@ TrajOpt::TrajOpt(ros::NodeHandle& nh) {
   nh.getParam("pausems", pausems_);
   nh.getParam("dSwarmMin", dSwarmMin_);
   nh.getParam("omegamax", omegamax_);
+
+  nh.getParam("Scalar100X", Scalar100X_);
 
   Curmax_ = omegamax_/vmin_;
   visPtr_ = std::make_shared<vis_utils::VisUtils>(nh);

@@ -38,8 +38,8 @@ class TrajOpt {
   double vmean_, vgap_, amean_, agap_;
   double v_sqr_mean_, v_sqr_gap_;
   double rhoP_, rhoV_, rhoA_, rhoVtail_, rhoPswarm_, rhoC_;
-  // landing parameters
-  double v_plus_, robot_l_, robot_r_, platform_r_;
+  bool Scalar100X_;
+
   // MINCO Optimizer
   minco::MINCO_S4_Uniform mincoOpt_, debugOpt;
   std::vector<minco::MINCO_S4_Uniform> swarm_mincoOpt_, swarm_debugOpt_;
