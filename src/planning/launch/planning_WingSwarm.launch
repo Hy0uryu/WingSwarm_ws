@@ -30,6 +30,7 @@
       <remap from="~target" to="/target/odom"/>
 
       <param name="plan_duration" value="2.0"/>
+      <param name="kDeltaT" value="3.0"/>
 
       <param name="K" value="8"/>
       <param name="Piece_num" value="5"/>

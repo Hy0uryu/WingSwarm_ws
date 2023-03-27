@@ -57,6 +57,10 @@ class Piece {
     return coeffMat;
   }
 
+  inline void setDuration(double duration){
+    this->duration = duration;
+  }
+
   inline Eigen::Vector3d getPos(const double &t) const {
     Eigen::Vector3d pos(0.0, 0.0, 0.0);
     double tn = 1.0;

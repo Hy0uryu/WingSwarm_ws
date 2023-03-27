@@ -86,7 +86,10 @@ class Nodelet : public nodelet::Nodelet {
   //for replan
   Eigen::Vector3d tsignal;
   std::vector<Piece> ps;
+  std::vector<Trajectory> Buffer_traj;
   double replan_ts;
+
+  double last_plan_deltaT, kDeltaT_;
 
   void triger_callback(const geometry_msgs::PoseStampedConstPtr& msgPtr) {
     goal_ << msgPtr->pose.position.x, msgPtr->pose.position.y, 1.0;
@@ -132,37 +135,13 @@ class Nodelet : public nodelet::Nodelet {
         init_States_.col(i*4+2).z() = msgPtr->drone_status[i].acceleration.z;        
     }
 
-    if(!last_swarm_traj_.empty()){
-        // std::cout<<"Set the initS"<<std::endl;
-        ros::Time t_now = ros::Time::now();
-        for(int i = 0; i < drone_num_; i++){
-            double ts = (t_now - last_swarm_traj_[i].start_time).toSec(); 
-            int Idpiece = last_swarm_traj_[i].locatePieceIdx(ts);
-            Eigen::VectorXd duration_ = last_swarm_traj_[i].getDurations();
-            double tflag1, tflag2;
-            tflag1 = 0;
-            for(int j = 0; j < Idpiece; j++) tflag1 += duration_[j];
-            tflag2 = tflag1 + duration_[Idpiece];
-
-            // std::cout<<"fefefef"<<std::endl;
-            // std::cout<<last_swarm_traj_[i].getTotalDuration()<<std::endl;
-            // std::cout<<tflag1<<" "<<tflag2<<std::endl;
-
-            init_States_.col(4*i) = last_swarm_traj_[i].getPos(tflag2);
-            init_States_.col(4*i+1) = last_swarm_traj_[i].getVel(tflag2);
-            init_States_.col(4*i+2) = last_swarm_traj_[i].getAcc(tflag2);
-            init_States_.col(4*i+3) = last_swarm_traj_[i].getSnp(tflag2);
-            tsignal[i] = tflag1 + last_swarm_traj_[i].start_time.toSec();
-            ps[i] = last_swarm_traj_[i].getPiece(Idpiece);
-            replan_ts = last_swarm_traj_[i].start_time.toSec() + tflag2;
-        }
-    }
-
   }
 
   void polyTraj2ROSMsg(quadrotor_msgs::PolyTraj &msg, Trajectory traj){
     Eigen::VectorXd durs = traj.getDurations();
     int piece_num = traj.getPieceNum();
+    // std::cout<<"piece_num: "<<piece_num<<std::endl;
+    // std::cout<<"durs: "<<durs.transpose()<<std::endl;
     msg.duration.resize(piece_num);
     msg.coef_x.resize(8 * piece_num);
     msg.coef_y.resize(8 * piece_num);
@@ -278,6 +257,83 @@ class Nodelet : public nodelet::Nodelet {
         ifreplan_ = false;
         return;
     } 
+
+    if(!last_swarm_traj_.empty() && last_plan_deltaT != -1){
+        // std::cout<<"Set the initS"<<std::endl;
+        ros::Time t_now = ros::Time::now();
+        Buffer_traj.clear();
+        Buffer_traj.resize(drone_num_);
+        // for(int i = 0; i < drone_num_; i++){
+        //     double ts = (t_now - last_swarm_traj_[i].start_time).toSec(); 
+        //     int Idpiece = last_swarm_traj_[i].locatePieceIdx(ts);
+        //     Eigen::VectorXd duration_ = last_swarm_traj_[i].getDurations();
+        //     double tflag1, tflag2;
+        //     tflag1 = 0;
+        //     for(int j = 0; j < Idpiece; j++) tflag1 += duration_[j];
+        //     tflag2 = tflag1 + duration_[Idpiece];
+
+        //     // std::cout<<"fefefef"<<std::endl;
+        //     // std::cout<<last_swarm_traj_[i].getTotalDuration()<<std::endl;
+        //     // std::cout<<tflag1<<" "<<tflag2<<std::endl;
+
+        //     init_States_.col(4*i) = last_swarm_traj_[i].getPos(tflag2);
+        //     init_States_.col(4*i+1) = last_swarm_traj_[i].getVel(tflag2);
+        //     init_States_.col(4*i+2) = last_swarm_traj_[i].getAcc(tflag2);
+        //     init_States_.col(4*i+3) = last_swarm_traj_[i].getSnp(tflag2);
+        //     tsignal[i] = tflag1 + last_swarm_traj_[i].start_time.toSec();
+        //     ps[i] = last_swarm_traj_[i].getPiece(Idpiece);
+        //     replan_ts = last_swarm_traj_[i].start_time.toSec() + tflag2;
+        // }
+
+        for(int i = 0; i < drone_num_; i++){
+            double ts = (t_now - last_swarm_traj_[i].start_time).toSec();
+            double tflag1, tflag2, tflag_tmp;
+            tflag2 = ts + kDeltaT_ * last_plan_deltaT;
+            // std::cout<<"kDeltaT_: "<<kDeltaT_<<std::endl;
+            // std::cout<<"last_plan_deltaT: "<<last_plan_deltaT<<std::endl;
+
+            init_States_.col(4*i) = last_swarm_traj_[i].getPos(tflag2);
+            init_States_.col(4*i+1) = last_swarm_traj_[i].getVel(tflag2);
+            init_States_.col(4*i+2) = last_swarm_traj_[i].getAcc(tflag2);
+            init_States_.col(4*i+3) = last_swarm_traj_[i].getSnp(tflag2);
+
+            // std::cout<<"ts: "<<ts<<std::endl;
+            tflag_tmp = tflag2;
+            int cur_Idpiece = last_swarm_traj_[i].locatePieceIdx(ts);
+            int replan_Idpiece = last_swarm_traj_[i].locatePieceIdx(tflag_tmp);
+
+            Eigen::VectorXd duration_ = last_swarm_traj_[i].getDurations();
+            // std::cout<<"duration_:"<<duration_.transpose()<<std::endl;
+            tflag1 = 0;
+            for(int j = 0; j < cur_Idpiece; j++) tflag1 += duration_[j];
+            tsignal[i] = tflag1 + last_swarm_traj_[i].start_time.toSec();
+            // std::cout<<"cur_Idpiece: "<<cur_Idpiece<<std::endl;
+            // std::cout<<"tflag1: "<<tflag1<<std::endl;
+            // std::cout<<"tflag2: "<<tflag2<<std::endl;
+
+            assert(cur_Idpiece<=replan_Idpiece);
+            if(cur_Idpiece == replan_Idpiece){
+                std::cout<<"equal trigger !"<<std::endl;
+                Piece ps = last_swarm_traj_[i].getPiece(cur_Idpiece);
+                ps.setDuration(tflag2-tflag1);
+                Buffer_traj[i].emplace_back(ps);
+            }
+            else{
+                std::cout<<"inequal trigger !"<<std::endl;
+                for( int idx=cur_Idpiece; idx<replan_Idpiece; idx++){
+                    Piece ps = last_swarm_traj_[i].getPiece(idx);
+                    Buffer_traj[i].emplace_back(ps);
+                    tflag1 += duration_[idx];
+                }
+                Piece ps = last_swarm_traj_[i].getPiece(replan_Idpiece);
+                ps.setDuration(tflag2-tflag1);
+                Buffer_traj[i].emplace_back(ps);
+            }
+            replan_ts = last_swarm_traj_[i].start_time.toSec() + tflag2;      
+            // std::cout<<"replan_ts: "<<replan_ts<<std::endl;
+        }
+    }
+
 
     ros::Time t_now = ros::Time::now();
     // std::cout<<"Time compare: "<<t_now.toSec()<<"replan_ts: "<<replan_ts<<std::endl;
@@ -408,18 +464,20 @@ class Nodelet : public nodelet::Nodelet {
             traj_msg.drone_id = i;
             traj_msg.order = 7;
 
-            if(!ps.empty()){
+            if(!Buffer_traj.empty()){
                 // traj_msg.start_time = ros::Time(start_time.toSec()-ps[i].getDuration());
                 traj_msg.start_time = ros::Time(tsignal[i]);
-                Trajectory traj_tmp(ps[i]);
+                Trajectory traj_tmp= Buffer_traj[i];
                 traj_tmp.append(swarm_traj[i]);
+                // std::cout<<"size: "<<traj_tmp.getDurations().size()<<std::endl;
                 last_swarm_traj_[i] = traj_tmp;
+                last_swarm_traj_[i].start_time = ros::Time(tsignal[i]);
                 polyTraj2ROSMsg(traj_msg, traj_tmp);
 
                 // std::cout<<"extraction: "<<start_time.toSec() - tsignal[i]<<std::endl;
-                last_swarm_traj_[i].start_time = traj_msg.start_time;
             }
             else{
+                // std::cout<<"trigger!!!!!!"<<std::endl;
                 last_swarm_traj_[i] = swarm_traj[i];
                 last_swarm_traj_[i].start_time = start_time;
                 
@@ -433,12 +491,18 @@ class Nodelet : public nodelet::Nodelet {
 
             swarm_msg.swarm_traj.push_back(traj_msg);
         }
-        if(ps.empty())  ps.resize(drone_num_);
+        // if(ps.empty())  ps.resize(drone_num_);
+        if(Buffer_traj.empty())  {
+            std::cout<<"allocate buffer"<<std::endl;
+            Buffer_traj.resize(drone_num_);
+        }
         swarm_traj_pub_.publish(swarm_msg);
     }
     auto toc = std::chrono::steady_clock::now();
 
     std::cout << "Total time costs: " << (toc - tic).count() * 1e-6 << "ms" << std::endl;
+    last_plan_deltaT = (toc - tic).count() * 1e-9;
+    std::cout<<"last_plan_deltaT: "<<last_plan_deltaT<<std::endl;
 
     // triger_received_ = false;
   }
@@ -452,6 +516,7 @@ class Nodelet : public nodelet::Nodelet {
 	nh.getParam("rho", rho_);
 	nh.getParam("ifLargeScale", ifLargeScale_);
     nh.getParam("close_dist", close_dist_);
+    nh.param("kDeltaT", kDeltaT_, 1.8);
 
     // drone_num_ = 3;
     des_theta_.resize(3,drone_num_);
@@ -476,6 +541,7 @@ class Nodelet : public nodelet::Nodelet {
 			nh.getParam(desTheta_str + "_y", des_theta_.col(i).y());
 			nh.getParam(desTheta_str + "_z", des_theta_.col(i).z());		
 		}
+    last_plan_deltaT = -1;
 
     visPtr_ = std::make_shared<vis_utils::VisUtils>(nh);
     trajOptPtr_ = std::make_shared<traj_opt::TrajOpt>(nh);
