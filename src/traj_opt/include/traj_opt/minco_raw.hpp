@@ -669,6 +669,7 @@ class MINCO_S4_Uniform {
                            10080.0 * c.row(8 * i + 7) * t(4);
       gdC.block<4, 3>(8 * i, 0).setZero();
     }
+    
     // addGradJbyT
     gdT = 0.0;
     for (int i = 0; i < N; i++) {

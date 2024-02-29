@@ -293,6 +293,28 @@ class VisUtils {
     publisher_map_[topic].publish(arrow_msg);
   }
 
+  template <class TOPIC>
+  void visualize_mesh( const Eigen::Vector3d p, 
+                       const Eigen::Matrix3d R,
+                       const TOPIC& topic, 
+                       const Color& color = blue,
+                       const Eigen::Vector3d Scaler = Eigen::Vector3d(0.05,0.1,0)) {
+    auto got = publisher_map_.find(topic);
+    if (got == publisher_map_.end()) {
+      ros::Publisher pub = nh_.advertise<visualization_msgs::Marker>(topic, 10);
+      publisher_map_[topic] = pub;
+    }
+    visualization_msgs::Marker mesh_msg;
+    mesh_msg.type = visualization_msgs::Marker::MESH_RESOURCE;
+    mesh_msg.action = visualization_msgs::Marker::ADD;
+    mesh_msg.header.frame_id = "world";
+    mesh_msg.mesh_resource = "package://planning/mesh/plane.dae";
+    setMarkerPose(mesh_msg, p.x(), p.y(), p.z(), R);
+    setMarkerScale(mesh_msg, Scaler.x(), Scaler.y(), Scaler.z());
+    setMarkerColor(mesh_msg, color);
+    publisher_map_[topic].publish(mesh_msg);
+                        }
+
   // v0 -> v1 theta
   template <class TOPIC>
   void visualize_fan_shape_meshes(const std::vector<Eigen::Vector3d>& v0,
@@ -336,6 +358,8 @@ class VisUtils {
     }
     publisher_map_[topic].publish(marker);
   }
+
+
 
   template <class ARROWS, class TOPIC>
   // ARROWS: pair<Vector3d, Vector3d>
@@ -408,15 +432,16 @@ class VisUtils {
     path_msg.header.frame_id = "world";
     path_msg.id = 0;
     setMarkerPose(path_msg, 0, 0, 0);
-    setMarkerScale(path_msg, 0.02, 0.05, 0);
+    setMarkerScale(path_msg, 0.1, 0.1, 0);
     visualization_msgs::MarkerArray path_list_msg;
     path_list_msg.markers.reserve(1 + traj_list.size());
     path_list_msg.markers.push_back(clear_previous_msg);
+    // path_list_msg.markers.reserve(traj_list.size());
     double a_step = 0.8 / traj_list.size();
     double a = 0.1;
     geometry_msgs::Point p_msg;
     for (const auto& traj : traj_list) {
-      setMarkerColor(path_msg, white, a);
+      setMarkerColor(path_msg, blue, a);
       a = a + a_step;
       path_msg.points.clear();
       for (double t = 0; t < traj.getTotalDuration(); t += 0.01) {

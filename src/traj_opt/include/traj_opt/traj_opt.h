@@ -31,19 +31,22 @@ class TrajOpt {
   int N_, K_, dim_t_, dim_p_;
   // weight for time regularization term
   double rhoT_;
+  Eigen::Vector3d qpos, qvel;
 
   double vmax_, amax_, vmin_, amin_;
   double dSwarmMin_;
   double omegamax_, Curmax_;
   double vmean_, vgap_, amean_, agap_;
   double v_sqr_mean_, v_sqr_gap_;
-  double rhoP_, rhoV_, rhoA_, rhoVtail_, rhoPswarm_, rhoC_;
-  bool Scalar100X_;
+  double rhoP_, rhoV_, rhoA_, rhoVtail_, rhoPswarm_, rhoC_, rhoAtail_;
+  double TimeNoSafe_;
+  int FixK_;
 
   // MINCO Optimizer
   minco::MINCO_S4_Uniform mincoOpt_, debugOpt;
   std::vector<minco::MINCO_S4_Uniform> swarm_mincoOpt_, swarm_debugOpt_;
-  std::vector<Eigen::MatrixXd> initS_, initE_;
+  std::vector<Eigen::MatrixXd> initS_, initE_, initE_Debug_;
+  std::vector<Trajectory> vis_traj_list;
   // duration of each piece of the trajectory
   Eigen::VectorXd t_;
   double* x_;
@@ -61,6 +64,7 @@ class TrajOpt {
   // forward T
   Eigen::VectorXd times;
   int dim_tail_;
+  int dim_atail_, dim_jtail_;
 
   // target trajectory
   Trajectory target_traj_poly_;
@@ -85,6 +89,8 @@ class TrajOpt {
   void addTimeIntPenalty(double& cost);
 
   void addTimeIntPenalty_Swarm(double& cost);
+
+  void addTimeIntPenalty_Swarm_inFixedTimeStep(double& cost);
 
   Eigen::VectorXd forwardT(const Eigen::VectorXd& t);
 
@@ -124,11 +130,25 @@ class TrajOpt {
   bool grad_cost_limitv(const double& v,
                         double& gradv,
                         double& costv);
+
+  bool grad_cost_limita(const Eigen::Vector3d& theta,
+                        const Eigen::Vector3d& a,
+                        Eigen::Vector3d& grada,
+                        double& costa);
+
   bool grad_collision_check(const Eigen::Vector3d& p1,
 							const Eigen::Vector3d& p2,
                           	Eigen::Vector3d& gradp1,
 							Eigen::Vector3d& gradp2,
                           	double& costp); 
+  
+  bool grad_collision_check(const Eigen::Vector3d& p1,
+									const Eigen::Vector3d& p2,
+                                    const Eigen::Vector3d& endp,
+                          			Eigen::Vector3d& gradp1,
+								    Eigen::Vector3d& gradp2,
+                                    Eigen::Vector3d& gradq,
+                          			double& costp);
 
   void setExcue_T(double& t); 
 };

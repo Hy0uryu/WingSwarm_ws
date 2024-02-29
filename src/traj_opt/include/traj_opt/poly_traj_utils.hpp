@@ -41,6 +41,11 @@ class Piece {
   Piece(double dur, const CoefficientMat &cMat)
       : duration(dur), coeffMat(cMat) {}
 
+  inline void InformPrint(){
+    std::cout<<"coeffMat: "<<coeffMat<<std::endl;
+    std::cout<<"duration: "<<duration<<std::endl;
+  }
+
   inline int getDim() const {
     return 3;
   }
@@ -380,6 +385,13 @@ class Trajectory {
   Trajectory(const Piece& ps) {
     pieces.reserve(1);
     pieces.emplace_back(ps);
+  }
+
+  void trajInformPrint(){
+    std::cout<<"start_time: "<<start_time<<std::endl;
+    for(auto piece:pieces){
+        piece.InformPrint();
+    }
   }
 
   void SetTraj(const std::vector<double> &durs,
