@@ -1,7 +1,9 @@
 # WingSwarm
-A algorithm for drone swarm to intercept a known moving target.
+This paper proposes an efficient centralized trajectory planning algorithm for fixed-wing swarms to address the problem of coordinated arrival.
 
 test on the ubuntu 18.04, ROS melodic.
+
+**[ICIRA 2023]** Code for **Efficient Trajectory Planning for Coordinated Arrival of Fixed-Wing UAV Swarm** 
 
 ## Easy Start
 ```
